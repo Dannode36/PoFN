@@ -1,0 +1,132 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Newtonsoft.Json;
+using PoFN.models;
+using System.Net.Http.Headers;
+
+namespace PoFN
+{
+    public class Program
+    {
+        private static FuelApiData fuelApiData = new();
+        private static DateTime fuelDataLastUpdate = DateTime.UtcNow;
+        private static TimeSpan updateInterval = TimeSpan.FromMinutes(30);
+
+        private static HttpClient httpClient = new();
+
+        private static ApiKeys apiKeys = new();
+        private static string OAuthToken = string.Empty;
+
+        public static async Task<string> GetAllCurrentFuelPrices()
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
+            //request.Headers.Add("Authorization", "") = new()
+
+            var response = await httpClient.SendAsync(request);
+            return response.Content.ReadAsStringAsync().Result;
+        }
+
+        public static async void CheckAndUpdateFuelData()
+        {
+            if(DateTime.UtcNow - fuelDataLastUpdate >= updateInterval)
+            {
+                Console.WriteLine("Updating fuel price data...");
+                //var versions = await httpClient.GetFromJsonAsync<List<string>>("http://ddragon.leagueoflegends.com/api/versions.json");
+                //Update api data
+            }
+        }
+
+        public static async Task<string> GenerateOAuthToken(string authHeader)
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
+            //request.Headers.Add("Authorization", "") = new()
+
+            var response = await httpClient.SendAsync(request);
+            return response.Content.ReadAsStringAsync().Result;
+        }
+
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+            builder.Services.AddAuthorization();
+
+            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+            builder.Services.AddHttpClient();
+
+            var app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+
+            app.UseAuthorization();
+
+            //Load API keys
+            using (StreamReader r = new("keys.json"))
+            {
+                string json = r.ReadToEnd();
+                apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
+            }
+            OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result;
+
+
+            //Get and save fuel price data
+            using (StreamWriter r = new("prices.json"))
+            {
+                r.Write()
+            }
+
+            //Load fuel price data
+            using (StreamReader r = new("prices.json"))
+            {
+                string json = r.ReadToEnd();
+                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(json) ?? new();
+            }
+
+            
+
+            app.MapGet("/ok", (HttpContext httpContext) =>
+            {
+                return Results.Ok();
+            })
+            .WithName("Ok")
+            .WithOpenApi();
+
+            app.MapGet("/stationPricesRadius", (HttpContext httpContext, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            {
+                lock (fuelApiData)
+                {
+                    CheckAndUpdateFuelData();
+                    return Results.Ok(fuelApiData.GetStationPricesWithinRadius(new(latitude, longitude), 10000, fuelType));
+                }
+            })
+            .WithName("StationPricesInRadius")
+            .WithOpenApi();
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.MapGet("/stationPricesRadiusDev", (HttpContext httpContext, string fuelType = "Any") =>
+                {
+                    Location location = new(-33.4970376, 151.3159292);
+                    lock (fuelApiData)
+                    {
+                        CheckAndUpdateFuelData();
+                        return fuelApiData.GetStationPricesWithinRadius(location, 10000, fuelType);
+                    }
+                })
+                .WithName("GetStationsInRangeDev")
+                .WithOpenApi();
+            }
+
+            app.Run();
+        }
+    }
+}
