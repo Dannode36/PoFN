@@ -16,10 +16,19 @@ namespace PoFN
         private static ApiKeys apiKeys = new();
         private static string OAuthToken = string.Empty;
 
-        public static async Task<string> GetAllCurrentFuelPrices()
+        public static async Task<string> GetAllPrices()
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
-            //request.Headers.Add("Authorization", "") = new()
+            request.Headers.Add("Authorization", "");
+
+            var response = await httpClient.SendAsync(request);
+            return response.Content.ReadAsStringAsync().Result;
+        }
+
+        public static async Task<string> GetUpdatedPrices()
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
+            request.Headers.Add("Authorization", "");
 
             var response = await httpClient.SendAsync(request);
             return response.Content.ReadAsStringAsync().Result;
@@ -77,21 +86,19 @@ namespace PoFN
             }
             OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result;
 
-
-            //Get and save fuel price data
-            using (StreamWriter r = new("prices.json"))
+            //Save fuel price data to file for debugging idk
+            /*using (StreamWriter r = new("prices.json"))
             {
-                r.Write()
-            }
+                string jsonApiData = GetAllPrices().Result;
+                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(jsonApiData) ?? new();
+                r.Write(jsonApiData);
+            }*/
 
-            //Load fuel price data
+            //Save fuel price data to file for debugging idk
             using (StreamReader r = new("prices.json"))
             {
-                string json = r.ReadToEnd();
-                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(json) ?? new();
+                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(r.ReadToEnd()) ?? new();
             }
-
-            
 
             app.MapGet("/ok", (HttpContext httpContext) =>
             {
