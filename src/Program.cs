@@ -11,27 +11,56 @@ namespace PoFN
         private static DateTime fuelDataLastUpdate = DateTime.UtcNow;
         private static TimeSpan updateInterval = TimeSpan.FromMinutes(30);
 
+        private const int AuthRetries = 2;
+
         private static HttpClient httpClient = new();
 
         private static ApiKeys apiKeys = new();
         private static string OAuthToken = string.Empty;
 
-        public static async Task<string> GetAllPrices()
+        //Only call at app startup
+        public static async Task<FuelApiData> GetAllPrices(int iteration = 0)
         {
-            using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
-            request.Headers.Add("Authorization", "");
+            using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/FuelPriceCheck/v1/fuel/prices");
+            request.Headers.Add("Authorization", OAuthToken);
 
             var response = await httpClient.SendAsync(request);
-            return response.Content.ReadAsStringAsync().Result;
+
+            if(response.IsSuccessStatusCode)
+            {
+                return JsonConvert.DeserializeObject<FuelApiData>(await response.Content.ReadAsStringAsync()) ?? new();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration < AuthRetries)
+            {
+                return await GetAllPrices(iteration++);
+            }
+            else
+            {
+                Console.WriteLine($"GetAllPrices failed. HTTP status code was {{{response.StatusCode}}}");
+                return new();
+            }
         }
 
-        public static async Task<string> GetUpdatedPrices()
+        public static async Task<FuelApiData> GetUpdatedPrices(int iteration = 0)
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
-            request.Headers.Add("Authorization", "");
+            request.Headers.Add("Authorization", OAuthToken);
 
             var response = await httpClient.SendAsync(request);
-            return response.Content.ReadAsStringAsync().Result;
+
+            if (response.IsSuccessStatusCode)
+            {
+                return JsonConvert.DeserializeObject<FuelApiData>(await response.Content.ReadAsStringAsync()) ?? new();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration < AuthRetries)
+            {
+                return await GetAllPrices(iteration++);
+            }
+            else
+            {
+                Console.WriteLine($"GetAllPrices failed. HTTP status code was {{{response.StatusCode}}}");
+                return new();
+            }
         }
 
         public static async void CheckAndUpdateFuelData()
