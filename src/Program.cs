@@ -73,13 +73,19 @@ namespace PoFN
             }
         }
 
-        public static async Task<string> GenerateOAuthToken(string authHeader)
+        public static async Task<ApiAccessToken> GenerateOAuthToken()
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
-            //request.Headers.Add("Authorization", "") = new()
+            request.Headers.Add("grant_type", "client_credentials");
+            request.Headers.Add("Authorization", "Basic" + apiKeys.AuthHeader);
 
             var response = await httpClient.SendAsync(request);
-            return response.Content.ReadAsStringAsync().Result;
+            if(response.IsSuccessStatusCode)
+            {
+                string json = response.Content.ReadAsStringAsync().Result;
+                return JsonConvert.DeserializeObject<ApiAccessToken>(json) ?? new();
+            }
+            return new();
         }
 
         public static void Main(string[] args)
@@ -113,7 +119,7 @@ namespace PoFN
                 string json = r.ReadToEnd();
                 apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
             }
-            OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result;
+            OAuthToken = GenerateOAuthToken().Result.AccessToken;
 
             //Save fuel price data to file for debugging idk
             /*using (StreamWriter r = new("prices.json"))
