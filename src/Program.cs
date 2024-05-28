@@ -7,11 +7,12 @@ namespace PoFN
 {
     public class Program
     {
+        private static bool useApi = true;
         private static FuelApiData fuelApiData = new();
         private static DateTime fuelDataLastUpdate = DateTime.UtcNow;
         private static TimeSpan updateInterval = TimeSpan.FromMinutes(30);
 
-        private const int AuthRetries = 2;
+        private const int AuthRetries = 1;
 
         private static HttpClient httpClient = new();
 
@@ -19,65 +20,68 @@ namespace PoFN
         private static string OAuthToken = string.Empty;
 
         //Only call at app startup
-        public static async Task<FuelApiData> GetAllPrices(int iteration = 0)
+        public static async Task<string> GetAllPricesJson(int iteration = 0)
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/FuelPriceCheck/v1/fuel/prices");
-            request.Headers.Add("Authorization", OAuthToken);
+            request.Headers.Add("Authorization", "Bearer " + OAuthToken);
+            request.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
             var response = await httpClient.SendAsync(request);
 
             if(response.IsSuccessStatusCode)
             {
-                return JsonConvert.DeserializeObject<FuelApiData>(await response.Content.ReadAsStringAsync()) ?? new();
+                return await response.Content.ReadAsStringAsync();
             }
-            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration < AuthRetries)
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration <= AuthRetries)
             {
-                return await GetAllPrices(iteration++);
+                OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result.AccessToken;
+                return await GetAllPricesJson(iteration++);
             }
             else
             {
                 Console.WriteLine($"GetAllPrices failed. HTTP status code was {{{response.StatusCode}}}");
-                return new();
+                return string.Empty;
             }
         }
 
-        public static async Task<FuelApiData> GetUpdatedPrices(int iteration = 0)
+        public static async Task<string> GetUpdatedPricesJson(int iteration = 0)
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
-            request.Headers.Add("Authorization", OAuthToken);
+            request.Headers.Add("Authorization", "Bearer " + OAuthToken);
+            request.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
             var response = await httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
-                return JsonConvert.DeserializeObject<FuelApiData>(await response.Content.ReadAsStringAsync()) ?? new();
+                return await response.Content.ReadAsStringAsync();
             }
-            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration < AuthRetries)
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && iteration <= AuthRetries)
             {
-                return await GetAllPrices(iteration++);
+                OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result.AccessToken;
+                return await GetUpdatedPricesJson(iteration++);
             }
             else
             {
                 Console.WriteLine($"GetAllPrices failed. HTTP status code was {{{response.StatusCode}}}");
-                return new();
+                return string.Empty;
             }
         }
 
         public static async void CheckAndUpdateFuelData()
         {
-            if(DateTime.UtcNow - fuelDataLastUpdate >= updateInterval)
+            if(useApi && DateTime.UtcNow - fuelDataLastUpdate >= updateInterval)
             {
                 Console.WriteLine("Updating fuel price data...");
-                //var versions = await httpClient.GetFromJsonAsync<List<string>>("http://ddragon.leagueoflegends.com/api/versions.json");
                 //Update api data
             }
         }
 
-        public static async Task<ApiAccessToken> GenerateOAuthToken()
+        public static async Task<ApiAccessToken> GenerateOAuthToken(string authHeader)
         {
             using HttpRequestMessage request = new(HttpMethod.Get, "http://api.onegov.nsw.gov.au/oauth/client_credential/accesstoken?grant_type=client_credentials");
             request.Headers.Add("grant_type", "client_credentials");
-            request.Headers.Add("Authorization", "Basic" + apiKeys.AuthHeader);
+            request.Headers.Add("Authorization", "Basic" + authHeader);
 
             var response = await httpClient.SendAsync(request);
             if(response.IsSuccessStatusCode)
@@ -85,11 +89,17 @@ namespace PoFN
                 string json = response.Content.ReadAsStringAsync().Result;
                 return JsonConvert.DeserializeObject<ApiAccessToken>(json) ?? new();
             }
+            Console.WriteLine("Could not generate access token");
             return new();
         }
 
         public static void Main(string[] args)
         {
+            if(args.Length > 0 && args[0] == "loadFromFile")
+            {
+                useApi = false;
+            }
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -113,27 +123,33 @@ namespace PoFN
 
             app.UseAuthorization();
 
-            //Load API keys
-            using (StreamReader r = new("keys.json"))
+            #region GetFuelData
+            if (useApi)
             {
-                string json = r.ReadToEnd();
-                apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
+                //Load API keys
+                using (StreamReader r = new("keys.json"))
+                {
+                    string json = r.ReadToEnd();
+                    apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
+                }
+                OAuthToken = GenerateOAuthToken(apiKeys.AuthHeader).Result.AccessToken;
+
+                //Save fuel price data to file for debugging idk
+                using (StreamWriter r = new("prices.json"))
+                {
+                    string jsonApiData = GetAllPricesJson().Result;
+                    fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(jsonApiData) ?? new();
+                    r.Write(jsonApiData);
+                }
             }
-            OAuthToken = GenerateOAuthToken().Result.AccessToken;
-
-            //Save fuel price data to file for debugging idk
-            /*using (StreamWriter r = new("prices.json"))
+            else
             {
-                string jsonApiData = GetAllPrices().Result;
-                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(jsonApiData) ?? new();
-                r.Write(jsonApiData);
-            }*/
-
-            //Save fuel price data to file for debugging idk
-            using (StreamReader r = new("prices.json"))
-            {
+                //Read fuel price data from file
+                using StreamReader r = new("prices.json");
                 fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(r.ReadToEnd()) ?? new();
             }
+
+            #endregion GetFuelData
 
             app.MapGet("/ok", (HttpContext httpContext) =>
             {
