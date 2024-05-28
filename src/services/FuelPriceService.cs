@@ -6,13 +6,13 @@ namespace PoFN.services
 {
     public class FuelPriceService : IFuelPriceService
     {
-        private readonly bool useApi = true;
-        public int fuelApiCallCount { get; private set; } = 0;
-        public int thisApiCallCount { get; private set; } = 0;
+        public int FuelApiCallCount { get; private set; } = 0;
+        public int ThisApiCallCount { get; private set; } = 0;
 
-        private FuelApiData fuelApiData;
-        private DateTime fuelDataLastUpdate = DateTime.UtcNow;
-        private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(30);
+        private readonly FuelApiData fuelApiData;
+        private DateTime fuelDataLastUpdate;
+        private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(1);
+        public const string anyFuelType = "Any";
 
         private readonly HttpClient httpClient;
         private const int AuthRetries = 1;
@@ -23,40 +23,29 @@ namespace PoFN.services
 
         public FuelPriceService(ILogger<FuelPriceService> logger)
         {
-            fuelDataLastUpdate -= updateInterval;
             _logger = logger;
             httpClient = new();
 
-            if (useApi)
+            //Load API keys
+            using (StreamReader r = new("keys.json"))
             {
-                //Load API keys
-                using (StreamReader r = new("keys.json"))
-                {
-                    string json = r.ReadToEnd();
-                    apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
-                }
-                //AccessToken = GenerateOAuthToken(apiKeys.AuthHeader).Result.AccessToken;
+                string json = r.ReadToEnd();
+                apiKeys = JsonConvert.DeserializeObject<ApiKeys>(json) ?? new();
+            }
 
-                /*string jsonApiData = GetAllPricesJson().Result;
-                if (jsonApiData != string.Empty)
-                {
-                    //Save fuel price data to file for debugging idk
-                    using StreamWriter r = new("prices.json");
-                    fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(jsonApiData) ?? new();
-                    r.Write(jsonApiData);
-                }
-                else
-                {
-                    fuelApiData = new();
-                }*/
-                fuelApiData = new();
+            //Generate access token for the next function
+            AccessToken = GenerateOAuthToken(apiKeys.AuthHeader).Result.AccessToken;
+
+            //Get current fuel prices from NSW API
+            string jsonApiData = GetAllPricesJson().Result;
+            if (jsonApiData != string.Empty)
+            {
+                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(jsonApiData) ?? new();
+                fuelDataLastUpdate = DateTime.UtcNow;
             }
             else
             {
-                //Read fuel price data from file
-                using StreamReader r = new("prices.json");
-                fuelApiData = JsonConvert.DeserializeObject<FuelApiData>(r.ReadToEnd()) ?? new();
-                apiKeys = new();
+                fuelApiData = new();
             }
         }
 
@@ -66,7 +55,7 @@ namespace PoFN.services
             request.Headers.Add("Authorization", authHeader);
 
             var response = await httpClient.SendAsync(request);
-            fuelApiCallCount++;
+            FuelApiCallCount++;
 
             if (response.IsSuccessStatusCode)
             {
@@ -95,7 +84,7 @@ namespace PoFN.services
             }
 
             var response = await httpClient.SendAsync(request);
-            fuelApiCallCount++;
+            FuelApiCallCount++;
 
             if (response.IsSuccessStatusCode)
             {
@@ -133,7 +122,7 @@ namespace PoFN.services
             }
 
             var response = await httpClient.SendAsync(request);
-            fuelApiCallCount++;
+            FuelApiCallCount++;
 
             if (response.IsSuccessStatusCode)
             {
@@ -160,7 +149,7 @@ namespace PoFN.services
         }
         private async void CheckAndUpdateFuelData()
         {
-            if (useApi && DateTime.UtcNow - fuelDataLastUpdate >= updateInterval)
+            if (DateTime.UtcNow - fuelDataLastUpdate >= updateInterval)
             {
                 Console.WriteLine("Updating fuel price data...");
                 FuelApiData updatedFuelData = JsonConvert.DeserializeObject<FuelApiData>(await GetUpdatedPricesJson()) ?? new();
@@ -208,15 +197,15 @@ namespace PoFN.services
                     $"\tStations Added: {stationsAdded}" +
                     $"\tPrices Updated: {pricesUpdated}" +
                     $"\tPrices Added: {pricesAdded}");
-                _logger.LogInformation($"Fuel API Call count {fuelApiCallCount}");
+                _logger.LogInformation($"Fuel API call count: {FuelApiCallCount}");
 
             }
         }
 
         public FuelApiData GetAllData()
         {
-            thisApiCallCount++;
-            _logger.LogInformation($"This API Call count {thisApiCallCount}");
+            ThisApiCallCount++;
+            _logger.LogInformation($"This API all count: {ThisApiCallCount}");
             return fuelApiData;
         }
         public List<Station> GetStationsWithinRadius(Location location, double radius)
@@ -224,8 +213,8 @@ namespace PoFN.services
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
-                thisApiCallCount++;
-                _logger.LogInformation($"This API Call count {thisApiCallCount}");
+                ThisApiCallCount++;
+                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
                 return fuelApiData.Stations.Where(x => Geolocation.CalculateDistance(location, x.Location) <= radius).ToList();
             }
         }
@@ -234,24 +223,24 @@ namespace PoFN.services
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
-                thisApiCallCount++;
-                _logger.LogInformation($"This API Call count {thisApiCallCount}");
+                ThisApiCallCount++;
+                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
                 return fuelApiData.Prices.Where(x => x.Stationcode == stationcode).ToList();
             }
         }
-        public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelType = "Any")
+        public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelType = anyFuelType)
         {
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
-                thisApiCallCount++;
-                _logger.LogInformation($"This API Call count {thisApiCallCount}");
+                ThisApiCallCount++;
+                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
 
                 List<StationPrices> stationPrices = [];
 
                 foreach (var station in fuelApiData.GetStationsWithinRadius(location, radius))
                 {
-                    List<FuelPrice> prices = fuelApiData.GetStationPrices(station.Code).Where(x => fuelType == "Any" || x.Fueltype == fuelType).ToList();
+                    List<FuelPrice> prices = fuelApiData.GetStationPrices(station.Code).Where(x => fuelType == anyFuelType || x.Fueltype == fuelType).ToList();
 
                     if (prices.Count > 0)
                     {

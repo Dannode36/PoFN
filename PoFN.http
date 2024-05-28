@@ -1,6 +1,6 @@
 @PoFN_HostAddress = http://localhost:5179
 
-GET {{PoFN_HostAddress}}/weatherforecast/
+GET {{PoFN_HostAddress}}/stationPricesInRadius/
 Accept: application/json
 
 ###

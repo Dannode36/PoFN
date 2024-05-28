@@ -37,14 +37,14 @@ namespace PoFN
 
             app.MapGet("/ok", (HttpContext httpContext) =>
             {
-                return Results.Ok();
+                return Results.Ok("ok");
             })
             .WithName("Ok")
             .WithOpenApi();
 
-            app.MapGet("/stationPricesRadius", (HttpContext httpContext, [FromServices] FuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            app.MapGet("/stationPricesInRadius", (HttpContext httpContext, [FromServices] FuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
             {
-                return fpService.GetStationPricesWithinRadius(new(latitude, longitude), 10000, fuelType);
+                return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
             })
             .WithName("StationPricesInRadius")
             .WithOpenApi();

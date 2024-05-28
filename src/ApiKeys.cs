@@ -2,8 +2,8 @@
 {
     class ApiKeys
     {
-        public string ApiKey { get; set; }
-        public string ApiSecret { get; set; }
-        public string AuthHeader { get; set; }
+        public string ApiKey { get; set; } = string.Empty;
+        public string ApiSecret { get; set; } = string.Empty;
+        public string AuthHeader { get; set; } = string.Empty;
     }
 }
