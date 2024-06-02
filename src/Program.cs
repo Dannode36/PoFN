@@ -1,9 +1,6 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using PoFN.models;
 using PoFN.services;
-using System.Net.Http.Headers;
 
 namespace PoFN
 {
@@ -35,14 +32,14 @@ namespace PoFN
 
             app.UseAuthorization();
 
-            app.MapGet("/ok", (HttpContext httpContext) =>
+            app.MapGet("/stations/{code}", ([FromServices] FuelPriceService fpService, string code) =>
             {
-                return Results.Ok("ok");
+                return fpService.GetStationPrices(code);
             })
-            .WithName("Ok")
+            .WithName("StationPricesInRadius")
             .WithOpenApi();
 
-            app.MapGet("/stationPricesInRadius", (HttpContext httpContext, [FromServices] FuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            app.MapGet("/stations/radius", ([FromServices] FuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
             {
                 return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
             })
@@ -51,7 +48,7 @@ namespace PoFN
 
             if (app.Environment.IsDevelopment())
             {
-                app.MapGet("/stationPricesRadiusDev", (HttpContext httpContext, [FromServices] IFuelPriceService fpService, string fuelType = "Any") =>
+                app.MapGet("/stationPricesRadiusDev", ([FromServices] IFuelPriceService fpService, string fuelType = "Any") =>
                 {
                     Location location = new(-33.4970376, 151.3159292);
                     return fpService.GetStationPricesWithinRadius(location, 10000, fuelType);

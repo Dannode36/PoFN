@@ -11,7 +11,7 @@ namespace PoFN.services
 
         private readonly FuelApiData fuelApiData;
         private DateTime fuelDataLastUpdate;
-        private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(1);
+        private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(30);
         public const string anyFuelType = "Any";
 
         private readonly HttpClient httpClient;
@@ -218,14 +218,18 @@ namespace PoFN.services
                 return fuelApiData.Stations.Where(x => Geolocation.CalculateDistance(location, x.Location) <= radius).ToList();
             }
         }
-        public List<FuelPrice> GetStationPrices(string stationcode)
+        public StationPrices GetStationPrices(string stationcode)
         {
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
                 ThisApiCallCount++;
                 _logger.LogInformation($"This API all count: {ThisApiCallCount}");
-                return fuelApiData.Prices.Where(x => x.Stationcode == stationcode).ToList();
+                return new()
+                {
+                    Station = fuelApiData.Stations.Where(x => x.Code == stationcode).FirstOrDefault(),
+                    Prices = fuelApiData.Prices.Where(x => x.Stationcode == stationcode).ToList()
+                };
             }
         }
         public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelType = anyFuelType)
