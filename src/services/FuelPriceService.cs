@@ -205,7 +205,7 @@ namespace PoFN.services
         public FuelApiData GetAllData()
         {
             ThisApiCallCount++;
-            _logger.LogInformation($"This API all count: {ThisApiCallCount}");
+            _logger.LogInformation($"This API call count: {ThisApiCallCount}");
             return fuelApiData;
         }
         public List<Station> GetStationsWithinRadius(Location location, double radius)
@@ -214,7 +214,7 @@ namespace PoFN.services
             {
                 CheckAndUpdateFuelData();
                 ThisApiCallCount++;
-                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
+                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
                 return fuelApiData.Stations.Where(x => Geolocation.CalculateDistance(location, x.Location) <= radius).ToList();
             }
         }
@@ -224,7 +224,7 @@ namespace PoFN.services
             {
                 CheckAndUpdateFuelData();
                 ThisApiCallCount++;
-                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
+                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
                 return new()
                 {
                     Station = fuelApiData.Stations.Where(x => x.Code == stationcode).FirstOrDefault(),
@@ -238,7 +238,7 @@ namespace PoFN.services
             {
                 CheckAndUpdateFuelData();
                 ThisApiCallCount++;
-                _logger.LogInformation($"This API all count: {ThisApiCallCount}");
+                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
 
                 List<StationPrices> stationPrices = [];
 

@@ -32,14 +32,14 @@ namespace PoFN
 
             app.UseAuthorization();
 
-            app.MapGet("/stations/{code}", ([FromServices] FuelPriceService fpService, string code) =>
+            app.MapGet("/stations/{code}", ([FromServices] IFuelPriceService fpService, string code) =>
             {
                 return fpService.GetStationPrices(code);
             })
-            .WithName("StationPricesInRadius")
+            .WithName("StationPrices")
             .WithOpenApi();
 
-            app.MapGet("/stations/radius", ([FromServices] FuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            app.MapGet("/stations/radius", ([FromServices] IFuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
             {
                 return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
             })
