@@ -12,6 +12,7 @@ namespace PoFN.services
         private DateTime fuelDataLastUpdate;
         private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(30);
         public const string anyFuelType = "Any";
+        public const string E10 = "E10";
 
         private readonly HttpClient httpClient;
         private const int AuthRetries = 1;
@@ -243,7 +244,18 @@ namespace PoFN.services
                         stationPrices.Add(stationPrice);
                     }
                 }
-                return stationPrices;
+
+                if (fuelType == anyFuelType)
+                {
+                    var hasE10 = stationPrices.Where(x => x.Prices.Any(x => x.Fueltype == E10));;
+                    var sortedHasE10O = hasE10.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == E10).Price);
+                    var noE10 = stationPrices.Where(x => !x.Prices.Any(x => x.Fueltype == E10));;
+                    return [.. sortedHasE10O, .. noE10];
+                }
+                else
+                {
+                    return stationPrices.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == fuelType).Price).ToList();
+                }
             }
         }
     }

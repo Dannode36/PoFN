@@ -15,7 +15,7 @@ namespace PoFN
 
             // Add services to the container.
             builder.Services.AddAuthorization();
-
+            builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -41,14 +41,14 @@ namespace PoFN
             app.UseHttpLogging();
             app.UseAuthorization();
 
-            app.MapGet("/stations/{code}", ([FromServices] IFuelPriceService fpService, int code) =>
+            app.MapGet("/stations/{code}", ([FromServices] IFuelPriceService fpService, [FromRoute] int code) =>
             {
                 return Results.Ok(fpService.GetStationPrices(code));
             })
             .WithName("StationPrices")
             .WithOpenApi();
 
-            app.MapGet("/stations", ([FromServices] IFuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            app.MapGet("/stations/radius", ([FromServices] IFuelPriceService fpService, [FromQuery] double latitude, [FromQuery] double longitude, [FromQuery] double radius, [FromQuery] string fuelType = "Any") =>
             {
                 return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
             })
