@@ -48,7 +48,7 @@ namespace PoFN
             .WithName("StationPrices")
             .WithOpenApi();
 
-            app.MapGet("/stations/radius", ([FromServices] IFuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
+            app.MapGet("/stations", ([FromServices] IFuelPriceService fpService, double latitude, double longitude, double radius, string fuelType = "Any") =>
             {
                 return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
             })
