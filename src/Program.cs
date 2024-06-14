@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using PoFN.models;
 using PoFN.services;
+
+using LoggingField = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields;
 
 namespace PoFN
 {
@@ -18,6 +21,12 @@ namespace PoFN
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
             builder.Services.AddSingleton<IFuelPriceService, FuelPriceService>();
+            builder.Services.AddHttpLogging(logging =>
+            {
+                logging.LoggingFields = 
+                LoggingField.RequestQuery | LoggingField.RequestMethod | LoggingField.RequestPath
+                | LoggingField.ResponsePropertiesAndHeaders | LoggingField.ResponseStatusCode;
+            });
 
             var app = builder.Build();
 
@@ -29,12 +38,12 @@ namespace PoFN
             }
 
             //app.UseHttpsRedirection();
-
+            app.UseHttpLogging();
             app.UseAuthorization();
 
-            app.MapGet("/stations/{code}", ([FromServices] IFuelPriceService fpService, string code) =>
+            app.MapGet("/stations/{code}", ([FromServices] IFuelPriceService fpService, int code) =>
             {
-                return fpService.GetStationPrices(code);
+                return Results.Ok(fpService.GetStationPrices(code));
             })
             .WithName("StationPrices")
             .WithOpenApi();

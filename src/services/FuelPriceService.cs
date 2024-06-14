@@ -7,7 +7,6 @@ namespace PoFN.services
     public class FuelPriceService : IFuelPriceService
     {
         public int FuelApiCallCount { get; private set; } = 0;
-        public int ThisApiCallCount { get; private set; } = 0;
 
         private readonly FuelApiData fuelApiData;
         private DateTime fuelDataLastUpdate;
@@ -78,10 +77,6 @@ namespace PoFN.services
             request.Headers.Add("apikey", apiKeys.ApiKey);
             request.Headers.Add("transactionid", Guid.NewGuid().ToString());
             request.Headers.Add("requesttimestamp", DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss tt"));
-            if (!request.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=utf-8"))
-            {
-                _logger.LogWarning("Could not add \"Content-Type\" header");
-            }
 
             var response = await httpClient.SendAsync(request);
             FuelApiCallCount++;
@@ -116,10 +111,6 @@ namespace PoFN.services
             request.Headers.Add("apikey", apiKeys.ApiKey);
             request.Headers.Add("transactionid", Guid.NewGuid().ToString());
             request.Headers.Add("requesttimestamp", DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss tt"));
-            if (!request.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=utf-8"))
-            {
-                _logger.LogWarning("Could not add \"Content-Type\" header");
-            }
 
             var response = await httpClient.SendAsync(request);
             FuelApiCallCount++;
@@ -204,8 +195,6 @@ namespace PoFN.services
 
         public FuelApiData GetAllData()
         {
-            ThisApiCallCount++;
-            _logger.LogInformation($"This API call count: {ThisApiCallCount}");
             return fuelApiData;
         }
         public List<Station> GetStationsWithinRadius(Location location, double radius)
@@ -213,23 +202,23 @@ namespace PoFN.services
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
-                ThisApiCallCount++;
-                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
                 return fuelApiData.Stations.Where(x => Geolocation.CalculateDistance(location, x.Location) <= radius).ToList();
             }
         }
-        public StationPrices GetStationPrices(string stationcode)
+        public StationPrices? GetStationPrices(int stationcode)
         {
             lock (fuelApiData)
             {
-                CheckAndUpdateFuelData();
-                ThisApiCallCount++;
-                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
-                return new()
+                if(fuelApiData.Stations.Any(x => x.Code == stationcode.ToString()))
                 {
-                    Station = fuelApiData.Stations.Where(x => x.Code == stationcode).FirstOrDefault(),
-                    Prices = fuelApiData.Prices.Where(x => x.Stationcode == stationcode).ToList()
-                };
+                    CheckAndUpdateFuelData();
+                    return new()
+                    {
+                        Station = fuelApiData.Stations.Where(x => x.Code == stationcode.ToString()).FirstOrDefault(),
+                        Prices = fuelApiData.Prices.Where(x => x.Stationcode == stationcode.ToString()).ToList()
+                    };
+                }
+                return null;
             }
         }
         public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelType = anyFuelType)
@@ -237,8 +226,6 @@ namespace PoFN.services
             lock (fuelApiData)
             {
                 CheckAndUpdateFuelData();
-                ThisApiCallCount++;
-                _logger.LogInformation($"This API call count: {ThisApiCallCount}");
 
                 List<StationPrices> stationPrices = [];
 

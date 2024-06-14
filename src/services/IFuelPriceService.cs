@@ -5,7 +5,7 @@ namespace PoFN.services
     public interface IFuelPriceService
     {
         FuelApiData GetAllData();
-        StationPrices GetStationPrices(string stationcode);
+        StationPrices? GetStationPrices(int stationcode);
         List<Station> GetStationsWithinRadius(Location location, double radius);
         List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelType = "Any");
     }
