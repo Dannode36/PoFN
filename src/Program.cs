@@ -57,10 +57,10 @@ namespace PoFN
 
             if (app.Environment.IsDevelopment())
             {
-                app.MapGet("/stationPricesRadiusDev", ([FromServices] IFuelPriceService fpService, string fuelType = "Any") =>
+                app.MapGet("/stationPricesRadiusDev", ([FromServices] IFuelPriceService fpService, string fuelTypes = "Any") =>
                 {
                     Location location = new(-33.4970376, 151.3159292);
-                    return fpService.GetStationPricesWithinRadius(location, 10000, fuelType);
+                    return fpService.GetStationPricesWithinRadius(location, 10000, fuelTypes);
                 })
                 .WithName("GetStationsInRangeDev")
                 .WithOpenApi();

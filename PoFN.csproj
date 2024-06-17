@@ -11,6 +11,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="pofn.service" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="pofn.service">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="prices.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>

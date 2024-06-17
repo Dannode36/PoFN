@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace PoFN.models
 {
-    public struct FuelPrice
+    public struct FuelTypePrice
     {
         public string Stationcode { get; set; }
         public string Fueltype { get; set; }

@@ -3,6 +3,6 @@
     public class FuelApiData
     {
         public List<Station> Stations { get; set; } = [];
-        public List<FuelPrice> Prices { get; set; } = [];
+        public List<FuelTypePrice> Prices { get; set; } = [];
     }
 }

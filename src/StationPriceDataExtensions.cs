@@ -10,7 +10,7 @@ namespace PoFN
             return spData.Stations.Where(x => Geolocation.CalculateDistance(location, x.Location) <= radius).ToList();
         }
 
-        public static List<FuelPrice> GetStationPrices(this FuelApiData spData, string stationcode)
+        public static List<FuelTypePrice> GetStationPrices(this FuelApiData spData, string stationcode)
         {
             return spData.Prices.Where(x => x.Stationcode == stationcode).ToList();
         }
@@ -24,7 +24,7 @@ namespace PoFN
 
             foreach (var station in spData.GetStationsWithinRadius(location, radius))
             {
-                List<FuelPrice> prices = spData.GetStationPrices(station.Code).Where(x => fuelType == "Any" || x.Fueltype == fuelType).ToList();
+                List<FuelTypePrice> prices = spData.GetStationPrices(station.Code).Where(x => fuelType == "Any" || x.Fueltype == fuelType).ToList();
 
                 if (prices.Count > 0)
                 {
