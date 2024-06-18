@@ -11,7 +11,7 @@ namespace PoFN.models
     {
         public string Stationcode { get; set; }
         public string Fueltype { get; set; }
-        public double Price { get; set; }
+        public float Price { get; set; }
         public string Lastupdated { get; set; }
     }
 }

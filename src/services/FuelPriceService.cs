@@ -12,8 +12,6 @@ namespace PoFN.services
         private readonly FuelApiData fuelApiData;
         private DateTime fuelDataLastUpdate;
         private readonly TimeSpan updateInterval = TimeSpan.FromMinutes(30);
-        public const string anyFuelType = "Any";
-        public const string E10 = "E10";
 
         private readonly HttpClient httpClient;
         private const int AuthRetries = 1;
@@ -223,7 +221,7 @@ namespace PoFN.services
                 return null;
             }
         }
-        public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, string fuelTypes = anyFuelType)
+        public List<StationPrices> GetStationPricesWithinRadius(Location location, double radius, List<string> fuelTypes)
         {
             lock (fuelApiData)
             {
@@ -233,7 +231,10 @@ namespace PoFN.services
 
                 foreach (var station in fuelApiData.GetStationsWithinRadius(location, radius))
                 {
-                    List<FuelTypePrice> prices = fuelApiData.GetStationPrices(station.Code).Where(x => fuelTypes == anyFuelType || x.Fueltype == fuelTypes).ToList();
+                    List<FuelTypePrice> prices = 
+                        fuelApiData.GetStationPrices(station.Code)
+                        .Where(x => fuelTypes.Contains(x.Fueltype))
+                        .ToList();
 
                     if (prices.Count > 0)
                     {
@@ -246,22 +247,24 @@ namespace PoFN.services
                     }
                 }
 
-                if (fuelTypes == anyFuelType)
+                string firstType = fuelTypes[0];
+                if (fuelTypes.Count > 1)
                 {
-                    var hasE10 = stationPrices.Where(x => x.Prices.Any(x => x.Fueltype == E10));;
-                    var sortedHasE10O = hasE10.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == E10).Price);
-                    var noE10 = stationPrices.Where(x => !x.Prices.Any(x => x.Fueltype == E10));;
-                    return [.. sortedHasE10O, .. noE10];
+                    //Splits stations into a list that has the sotring fuel type, sort it, then append the remaining stations
+                    var hasFuelType = stationPrices.Where(x => x.Prices.Any(x => x.Fueltype == firstType));
+                    var sortedHasFuelType = hasFuelType.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == firstType).Price);
+                    var noFuelType = stationPrices.Where(x => !x.Prices.Any(x => x.Fueltype == firstType));
+                    return [.. sortedHasFuelType, .. noFuelType];
                 }
                 else
                 {
-                    return stationPrices.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == fuelTypes).Price).ToList();
+                    return stationPrices.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == firstType).Price).ToList();
                 }
             }
         }
 
-        //More convenient api for FuelRanger (weird transform bullshit happening beware)
-        public FuelRangerData GetFuelPricesWithinRadius(Location location, double radius, string fuelTypes = anyFuelType)
+        //More convenient api for FuelRanger (weird bullshit beyond here, beware!)
+        /*public FuelRangerData GetFuelRangerPricesWithinRadius(Location location, double radius, string fuelTypes = anyFuelType)
         {
             List<string> fuelTypeList = [.. fuelTypes.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
             if(fuelTypeList.Count == 0) { return new(); }
@@ -307,6 +310,6 @@ namespace PoFN.services
 
                 //return stationPrices.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == fuelTypes).Price).ToList();
             }
-        }
+        }*/
     }
 }

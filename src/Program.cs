@@ -15,7 +15,6 @@ namespace PoFN
 
             // Add services to the container.
             builder.Services.AddAuthorization();
-            builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -48,9 +47,15 @@ namespace PoFN
             .WithName("StationPrices")
             .WithOpenApi();
 
-            app.MapGet("/stations/radius", ([FromServices] IFuelPriceService fpService, [FromQuery] double latitude, [FromQuery] double longitude, [FromQuery] double radius, [FromQuery] string fuelType = "Any") =>
+            app.MapGet("/stations/radius", ([FromServices] IFuelPriceService fpService, [FromQuery] double latitude, [FromQuery] double longitude, [FromQuery] double radius, [FromQuery] string fuelTypes = "Any") =>
             {
-                return fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelType);
+                List<string> fuelTypeList = [.. fuelTypes.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+                if (fuelTypeList.Count == 0) 
+                { 
+                    return Results.BadRequest("fuelTypes parameter was invalid"); 
+                }
+
+                return Results.Ok(fpService.GetStationPricesWithinRadius(new(latitude, longitude), radius, fuelTypeList));
             })
             .WithName("StationPricesInRadius")
             .WithOpenApi();
@@ -59,8 +64,14 @@ namespace PoFN
             {
                 app.MapGet("/stationPricesRadiusDev", ([FromServices] IFuelPriceService fpService, string fuelTypes = "Any") =>
                 {
+                    List<string> fuelTypeList = [.. fuelTypes.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+                    if (fuelTypeList.Count == 0) 
+                    { 
+                        return Results.BadRequest("fuelTypes parameter was invalid"); 
+                    }
+
                     Location location = new(-33.4970376, 151.3159292);
-                    return fpService.GetStationPricesWithinRadius(location, 10000, fuelTypes);
+                    return Results.Ok(fpService.GetStationPricesWithinRadius(location, 10000, fuelTypeList));
                 })
                 .WithName("GetStationsInRangeDev")
                 .WithOpenApi();
