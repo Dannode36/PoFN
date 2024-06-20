@@ -59,7 +59,7 @@ namespace PoFN.services
             if (response.IsSuccessStatusCode)
             {
                 var accessToken = JsonConvert.DeserializeObject<ApiAccessToken>(response.Content.ReadAsStringAsync().Result);
-                if(accessToken != null)
+                if (accessToken != null)
                 {
                     return accessToken;
                 }
@@ -209,7 +209,7 @@ namespace PoFN.services
         {
             lock (fuelApiData)
             {
-                if(fuelApiData.Stations.Any(x => x.Code == stationcode.ToString()))
+                if (fuelApiData.Stations.Any(x => x.Code == stationcode.ToString()))
                 {
                     CheckAndUpdateFuelData();
                     return new()
@@ -231,7 +231,7 @@ namespace PoFN.services
 
                 foreach (var station in fuelApiData.GetStationsWithinRadius(location, radius))
                 {
-                    List<FuelTypePrice> prices = 
+                    List<FuelTypePrice> prices =
                         fuelApiData.GetStationPrices(station.Code)
                         .Where(x => fuelTypes.Contains(x.Fueltype))
                         .ToList();
@@ -262,54 +262,5 @@ namespace PoFN.services
                 }
             }
         }
-
-        //More convenient api for FuelRanger (weird bullshit beyond here, beware!)
-        /*public FuelRangerData GetFuelRangerPricesWithinRadius(Location location, double radius, string fuelTypes = anyFuelType)
-        {
-            List<string> fuelTypeList = [.. fuelTypes.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
-            if(fuelTypeList.Count == 0) { return new(); }
-
-            FuelRangerData fuelData = new();
-
-            lock (fuelApiData)
-            {
-                CheckAndUpdateFuelData();
-
-                List<StationPrices> stationPrices = [];
-
-                foreach (var station in fuelApiData.GetStationsWithinRadius(location, radius))
-                {
-                    List<FuelTypePrice> prices = fuelApiData.GetStationPrices(station.Code).Where(x => fuelTypes == anyFuelType || x.Fueltype == fuelTypes).ToList();
-
-                    if (fuelTypeList.Contains("Any"))
-                    {
-
-                    }
-                    else
-                    {
-                        foreach (var fuelType in fuelTypeList)
-                        {
-                            if (fuelData.PriceMap.TryGetValue(fuelType, out var priceMap))
-                            {
-                                FuelTypePrice fuelTypePrice = fuelApiData.GetStationPrices(station.Code).Where(x => x.Fueltype == fuelType).First();
-                                FuelPrice fuelPrice = new() //FuelRanger object
-                                {
-                                    Stationcode = fuelTypePrice.Stationcode,
-                                    Price = fuelTypePrice.Price,
-                                    Lastupdated = fuelTypePrice.Lastupdated
-                                };
-                                priceMap.Add(fuelPrice);
-                            }
-                            else
-                            {
-
-                            }
-                        }
-                    }
-                }
-
-                //return stationPrices.OrderBy(x => x.Prices.FirstOrDefault(x => x.Fueltype == fuelTypes).Price).ToList();
-            }
-        }*/
     }
 }
